@@ -1,5 +1,6 @@
 package com.ams.academicmanagementsystem.program;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +20,10 @@ public class ProgramService {
         return programRepository.findAll().stream().map(ProgramResponse::from).toList();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ProgramResponse createProgram(String name, String code) {
-        Program saved = programRepository.save(new Program(name,code));
+        Program saved = programRepository.save(new Program(name, code));
         return ProgramResponse.from(saved);
     }
 }

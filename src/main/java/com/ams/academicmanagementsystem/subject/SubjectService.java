@@ -3,6 +3,7 @@ package com.ams.academicmanagementsystem.subject;
 import com.ams.academicmanagementsystem.program.Program;
 import com.ams.academicmanagementsystem.program.ProgramRepository;
 import com.ams.academicmanagementsystem.program.ProgramResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ public class SubjectService {
         this.programRepository = programRepository;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public SubjectResponse createSubject(Long programId, Integer semesterNumber, String name, String code) {
         Program program = programRepository.findById(programId)
@@ -32,12 +34,6 @@ public class SubjectService {
     }
 
     private SubjectResponse toResponse(Subject subject){
-        return new SubjectResponse(
-                subject.getId(),
-                subject.getName(),
-                subject.getCode(),
-                subject.getSemesterNumber(),
-                ProgramResponse.from(subject.getProgram())
-        );
+        return SubjectResponse.from(subject);
     }
 }

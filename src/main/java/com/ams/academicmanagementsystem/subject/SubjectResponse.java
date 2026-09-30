@@ -8,4 +8,14 @@ public record SubjectResponse(
         String code,
         Integer semesterNumber,
         ProgramResponse program
-) {}
+) {
+    public static SubjectResponse from (Subject subject){
+        return new SubjectResponse(
+                subject.getId(),
+                subject.getName(),
+                subject.getCode(),
+                subject.getSemesterNumber(),
+                ProgramResponse.from(subject.getProgram())
+        );
+    }
+}

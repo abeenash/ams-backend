@@ -2,6 +2,7 @@ package com.ams.academicmanagementsystem.batch;
 
 import com.ams.academicmanagementsystem.program.Program;
 import com.ams.academicmanagementsystem.program.ProgramRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ public class BatchService {
         this.programRepository = programRepository;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public BatchResponse createBatch(Long programId, Integer intakeYear, Integer currentSemester){
         Program program = programRepository.findById(programId)
