@@ -1,5 +1,6 @@
 package com.ams.academicmanagementsystem.batch;
 
+import com.ams.academicmanagementsystem.exception.ResourceNotFoundException;
 import com.ams.academicmanagementsystem.program.Program;
 import com.ams.academicmanagementsystem.program.ProgramRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +23,7 @@ public class BatchService {
     @Transactional
     public BatchResponse createBatch(Long programId, Integer intakeYear, Integer currentSemester){
         Program program = programRepository.findById(programId)
-                .orElseThrow(()-> new IllegalArgumentException("No program with id "+programId));
+                .orElseThrow(()-> new ResourceNotFoundException("No program with id "+programId));
         Batch saved = batchRepository.save(new Batch(program, intakeYear, currentSemester));
         return toResponse(saved);
     }

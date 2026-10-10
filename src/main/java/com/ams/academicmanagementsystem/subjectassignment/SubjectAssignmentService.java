@@ -1,5 +1,7 @@
 package com.ams.academicmanagementsystem.subjectassignment;
 
+import com.ams.academicmanagementsystem.exception.BusinessRuleViolationException;
+import com.ams.academicmanagementsystem.exception.ResourceNotFoundException;
 import com.ams.academicmanagementsystem.section.Section;
 import com.ams.academicmanagementsystem.section.SectionRepository;
 import com.ams.academicmanagementsystem.section.SectionResponse;
@@ -34,9 +36,18 @@ public class SubjectAssignmentService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public SubjectAssignmentResponse createAssignment(Long teacherId, Long subjectId, Long sectionId){
-        Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(()->new IllegalArgumentException("No teacher with id "+teacherId));
-        Subject subject = subjectRepository.findById(subjectId).orElseThrow(()->new IllegalArgumentException("No subject with id "+subjectId));
-        Section section = sectionRepository.findById(sectionId).orElseThrow(()->new IllegalArgumentException("No section with id "+sectionId));
+        Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(()->new ResourceNotFoundException("No teacher with id "+teacherId));
+        Subject subject = subjectRepository.findById(subjectId).orElseThrow(()->new ResourceNotFoundException("No subject with id "+subjectId));
+        Section section = sectionRepository.findById(sectionId).orElseThrow(()->new ResourceNotFoundException("No section with id "+sectionId));
+
+        Long subjectProgramId = subject.getProgram().getId();
+        Long sectionProgramId = section.getBatch().getProgram().getId();
+
+        if(!subjectProgramId.equals(sectionProgramId)){
+            throw new BusinessRuleViolationException(
+                    "Subject belongs to a different program than the section's batch");
+        }
+
         SubjectAssignment saved = subjectAssignmentRepository.save(new SubjectAssignment(teacher, subject, section));
         return toResponse(saved);
     }

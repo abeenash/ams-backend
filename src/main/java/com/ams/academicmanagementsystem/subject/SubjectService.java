@@ -1,8 +1,8 @@
 package com.ams.academicmanagementsystem.subject;
 
+import com.ams.academicmanagementsystem.exception.ResourceNotFoundException;
 import com.ams.academicmanagementsystem.program.Program;
 import com.ams.academicmanagementsystem.program.ProgramRepository;
-import com.ams.academicmanagementsystem.program.ProgramResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +23,7 @@ public class SubjectService {
     @Transactional
     public SubjectResponse createSubject(Long programId, Integer semesterNumber, String name, String code) {
         Program program = programRepository.findById(programId)
-                .orElseThrow(() -> new IllegalArgumentException("No program with id " + programId));
+                .orElseThrow(() -> new ResourceNotFoundException("No program with id " + programId));
         Subject saved = subjectRepository.save(new Subject(program, semesterNumber, name, code));
         return toResponse(saved);
     }
