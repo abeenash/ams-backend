@@ -24,13 +24,17 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Page<Attendance> findBySubjectIdAndStudentSectionIdAndAttendanceDate(Long subjectId, Long sectionId, LocalDate date, Pageable pageable);
 
     @Query("""
-            select new com.ams.academicmanagementsystem.attendance.SubjectAttendanceSummary(s.id, s.name, s.code,
+            select new com.ams.academicmanagementsystem.attendance.SubjectAttendanceSummary(s.id, s.name, s.code, u.fullName,
             sum(case when a.present = true then 1 else 0 end),
             count(a))
             from Attendance a
             join a.subject s
-            where a.student.id = :studentId
-            group by s.id, s.name, s.code
+            join a.student st
+            left join SubjectAssignment sa on sa.subject = s and sa.section = st.section
+            left join sa.teacher t
+            left join t.user u
+            where st.id = :studentId
+            group by s.id, s.name, s.code, u.fullName
             order by s.name
             """)
     List<SubjectAttendanceSummary> summarizeByStudent(@Param("studentId") Long studentId);
