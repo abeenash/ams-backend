@@ -5,6 +5,7 @@ import com.ams.academicmanagementsystem.exception.ResourceNotFoundException;
 import com.ams.academicmanagementsystem.section.Section;
 import com.ams.academicmanagementsystem.section.SectionRepository;
 import com.ams.academicmanagementsystem.section.SectionResponse;
+import com.ams.academicmanagementsystem.security.CurrentUserProvider;
 import com.ams.academicmanagementsystem.subject.Subject;
 import com.ams.academicmanagementsystem.subject.SubjectRepository;
 import com.ams.academicmanagementsystem.subject.SubjectResponse;
@@ -23,27 +24,29 @@ public class SubjectAssignmentService {
     private final TeacherRepository teacherRepository;
     private final SectionRepository sectionRepository;
     private final SubjectRepository subjectRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public SubjectAssignmentService(SubjectAssignmentRepository subjectAssignmentRepository,
-                             TeacherRepository teacherRepository, SubjectRepository subjectRepository,
-                             SectionRepository sectionRepository){
+                                    TeacherRepository teacherRepository, SubjectRepository subjectRepository,
+                                    SectionRepository sectionRepository, CurrentUserProvider currentUserProvider) {
         this.subjectAssignmentRepository = subjectAssignmentRepository;
         this.teacherRepository = teacherRepository;
         this.subjectRepository = subjectRepository;
         this.sectionRepository = sectionRepository;
+        this.currentUserProvider = currentUserProvider;
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public SubjectAssignmentResponse createAssignment(Long teacherId, Long subjectId, Long sectionId){
-        Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(()->new ResourceNotFoundException("No teacher with id "+teacherId));
-        Subject subject = subjectRepository.findById(subjectId).orElseThrow(()->new ResourceNotFoundException("No subject with id "+subjectId));
-        Section section = sectionRepository.findById(sectionId).orElseThrow(()->new ResourceNotFoundException("No section with id "+sectionId));
+    public SubjectAssignmentResponse createAssignment(Long teacherId, Long subjectId, Long sectionId) {
+        Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(() -> new ResourceNotFoundException("No teacher with id " + teacherId));
+        Subject subject = subjectRepository.findById(subjectId).orElseThrow(() -> new ResourceNotFoundException("No subject with id " + subjectId));
+        Section section = sectionRepository.findById(sectionId).orElseThrow(() -> new ResourceNotFoundException("No section with id " + sectionId));
 
         Long subjectProgramId = subject.getProgram().getId();
         Long sectionProgramId = section.getBatch().getProgram().getId();
 
-        if(!subjectProgramId.equals(sectionProgramId)){
+        if (!subjectProgramId.equals(sectionProgramId)) {
             throw new BusinessRuleViolationException(
                     "Subject belongs to a different program than the section's batch");
         }
@@ -52,17 +55,25 @@ public class SubjectAssignmentService {
         return toResponse(saved);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
-    public List<SubjectAssignmentResponse> getAllAssignments(){
+    public List<SubjectAssignmentResponse> getAllAssignments() {
         return subjectAssignmentRepository.findAll().stream().map(this::toResponse).toList();
     }
 
-    private SubjectAssignmentResponse toResponse(SubjectAssignment assignment){
+    private SubjectAssignmentResponse toResponse(SubjectAssignment assignment) {
         return new SubjectAssignmentResponse(
                 assignment.getId(),
                 TeacherResponse.from(assignment.getTeacher()),
                 SubjectResponse.from(assignment.getSubject()),
                 SectionResponse.from(assignment.getSection())
         );
+    }
+
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional(readOnly = true)
+    public List<TeacherClassResponse> getMyClasses() {
+        String email = currentUserProvider.getCurrentUser().getUser().getEmail();
+        return subjectAssignmentRepository.findClassesByTeacherEmail(email);
     }
 }

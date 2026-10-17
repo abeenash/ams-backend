@@ -1,6 +1,7 @@
 package com.ams.academicmanagementsystem.attendance;
 
 import com.ams.academicmanagementsystem.common.PageResponse;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -20,7 +21,7 @@ public class AttendanceController {
     }
 
     @PostMapping
-    public MarkAttendanceResponse markAttendance(@RequestBody MarkAttendanceRequest request) {
+    public MarkAttendanceResponse markAttendance(@Valid @RequestBody MarkAttendanceRequest request) {
         return attendanceService.markAttendance(
                 request.subjectId(),
                 request.sectionId(),
@@ -37,7 +38,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/me/summary")
-    public List<SubjectAttendanceSummary> getMySummary(){
+    public List<SubjectAttendanceSummary> getMySummary() {
         return attendanceService.summarizeMyAttendance();
     }
 
@@ -48,5 +49,20 @@ public class AttendanceController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PageableDefault(size = 20, sort = "attendanceDate", direction = Sort.Direction.DESC) Pageable pageable) {
         return attendanceService.getClassAttendance(subjectId, sectionId, date, pageable);
+    }
+
+    @GetMapping("/roster")
+    public RosterResponse getRoster(
+            @RequestParam Long subjectId,
+            @RequestParam Long sectionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return attendanceService.getRoster(subjectId, sectionId, date);
+    }
+
+    @GetMapping("/class/days")
+    public List<ClassDaySummary> getClassDays(
+            @RequestParam Long subjectId,
+            @RequestParam Long sectionId) {
+        return attendanceService.getClassDays(subjectId, sectionId);
     }
 }

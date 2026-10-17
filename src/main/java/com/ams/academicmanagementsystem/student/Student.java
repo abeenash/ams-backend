@@ -20,12 +20,16 @@ public class Student {
     @JoinColumn(name = "section_id", nullable = false)
     private Section section;
 
+    @Column(name = "roll_number", nullable = false)
+    private Integer rollNumber;
+
     protected Student() {
     }
 
-    public Student(User user, Section section) {
+    public Student(User user, Section section, Integer rollNumber) {
         this.user = user;
         this.section = section;
+        this.rollNumber = rollNumber;
     }
 
     public Long getId() {
@@ -39,4 +43,6 @@ public class Student {
     public Section getSection() {
         return section;
     }
+
+    public Integer getRollNumber(){ return rollNumber; }
 }

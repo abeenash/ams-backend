@@ -38,7 +38,8 @@ public class UserService {
         if (role == Role.STUDENT) {
             Section section = sectionRepository.findById(sectionId)
                     .orElseThrow(() -> new ResourceNotFoundException("No section with id " + sectionId));
-            studentRepository.save(new Student(user, section));
+            int nextRoll = studentRepository.findMaxRollNumberBySectionId(sectionId) + 1;
+            studentRepository.save(new Student(user, section, nextRoll));
         } else if (role == Role.TEACHER) {
             teacherRepository.save(new Teacher(user));
         }

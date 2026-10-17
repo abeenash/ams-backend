@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,6 +37,7 @@ public class AttendanceService {
     private final SectionRepository sectionRepository;
     private final SubjectAssignmentRepository subjectAssignmentRepository;
     private final CurrentUserProvider currentUserProvider;
+    private static final ZoneId COLLEGE_ZONE = ZoneId.of("Asia/Kathmandu");
 
     private Pageable withStableOrder(Pageable pageable) {
         Sort stable = pageable.getSort().and(Sort.by(Sort.Direction.DESC, "id"));
@@ -70,16 +73,19 @@ public class AttendanceService {
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
     public MarkAttendanceResponse markAttendance(Long subjectId, Long sectionId, LocalDate attendanceDate, List<StudentAttendanceEntry> entries) {
-//        String teacherEmail = currentUserProvider.getCurrentUser().getUsername();
-//        boolean isAssigned = subjectAssignmentRepository.existsByTeacherUserEmailAndSubjectIdAndSectionId(teacherEmail, subjectId, sectionId);
-//        if (!isAssigned) {
-//            throw new AccessDeniedException("You are not assigned to teach this subject in this section");
-//        }
         requireAssignmentIfTeacher(subjectId, sectionId);
+
+        if (attendanceDate.isAfter(LocalDate.now(COLLEGE_ZONE))) {
+            throw new BusinessRuleViolationException("Attendance cannot be marked for a future date");
+        }
 
         Subject subject = subjectRepository.findById(subjectId).orElseThrow(() -> new ResourceNotFoundException("No subject with id " + subjectId));
         Section section = sectionRepository.findById(sectionId).orElseThrow(() -> new ResourceNotFoundException("No section with id " + sectionId));
         List<Long> studentIds = entries.stream().map(StudentAttendanceEntry::studentId).toList();
+
+        if (new HashSet<>(studentIds).size() != studentIds.size()) {
+            throw new BusinessRuleViolationException("The same student appears more than once");
+        }
         List<Student> students = studentRepository.findAllById(studentIds);
 
         if (students.size() != studentIds.size()) {
@@ -94,6 +100,11 @@ public class AttendanceService {
             }
             return new Attendance(student, subject, attendanceDate, entry.present());
         }).toList();
+
+        long rosterSize = studentRepository.countBySectionId(sectionId);
+        if (attendanceRecords.size() != rosterSize) {
+            throw new BusinessRuleViolationException("Attendance must cover every student in the section: expected " + rosterSize + " but received " + attendanceRecords.size());
+        }
 
         List<Attendance> saved = attendanceRepository.saveAll(attendanceRecords);
 
@@ -135,5 +146,32 @@ public class AttendanceService {
                 ? attendanceRepository.findBySubjectIdAndStudentSectionId(subjectId, sectionId, stable)
                 : attendanceRepository.findBySubjectIdAndStudentSectionIdAndAttendanceDate(subjectId, sectionId, date, stable);
         return PageResponse.from(page.map(AttendanceResponse::from));
+    }
+
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Transactional(readOnly = true)
+    public RosterResponse getRoster(Long subjectId, Long sectionId, LocalDate date) {
+        requireAssignmentIfTeacher(subjectId, sectionId);
+
+        Subject subject = subjectRepository.findById(subjectId).orElseThrow(() -> new ResourceNotFoundException("No subject with id " + subjectId));
+        Section section = sectionRepository.findById(sectionId).orElseThrow(() -> new ResourceNotFoundException("No section with id " + sectionId));
+
+        List<Student> students = studentRepository.findBySectionIdOrderByRollNumber(sectionId);
+
+        Map<Long, Boolean> statusByStudentId = attendanceRepository.findBySubjectIdAndStudentSectionIdAndAttendanceDate(subjectId, sectionId, date).stream().collect(Collectors.toMap(a -> a.getStudent().getId(), Attendance::isPresent));
+
+        List<RosterResponse.RosterStudent> rows = students.stream().map(s -> new RosterResponse.RosterStudent(
+                s.getId(), s.getUser().getFullName(), s.getRollNumber(), statusByStudentId.get(s.getId()))).toList();
+
+        String batchLabel = section.getBatch().getProgram().getCode() + " " + section.getBatch().getIntakeYear();
+
+        return new RosterResponse(subject.getId(), subject.getName(), subject.getCode(), section.getId(), section.getName(), batchLabel, date, !statusByStudentId.isEmpty(), rows);
+    }
+
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Transactional(readOnly = true)
+    public List<ClassDaySummary> getClassDays(Long subjectId, Long sectionId){
+        requireAssignmentIfTeacher(subjectId, sectionId);
+        return attendanceRepository.summarizeByDay(subjectId, sectionId);
     }
 }

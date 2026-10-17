@@ -17,11 +17,13 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     @EntityGraph(attributePaths = {"subject"})
     Page<Attendance> findByStudentIdAndSubjectId(Long studentId, Long subjectId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"student","student.user"})
+    @EntityGraph(attributePaths = {"student", "student.user"})
     Page<Attendance> findBySubjectIdAndStudentSectionId(Long subjectId, Long sectionId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"student","student.user"})
+    @EntityGraph(attributePaths = {"student", "student.user"})
     Page<Attendance> findBySubjectIdAndStudentSectionIdAndAttendanceDate(Long subjectId, Long sectionId, LocalDate date, Pageable pageable);
+
+    List<Attendance> findBySubjectIdAndStudentSectionIdAndAttendanceDate(Long subjectId, Long sectionId, LocalDate date);
 
     @Query("""
             select new com.ams.academicmanagementsystem.attendance.SubjectAttendanceSummary(s.id, s.name, s.code, u.fullName,
@@ -38,4 +40,16 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             order by s.name
             """)
     List<SubjectAttendanceSummary> summarizeByStudent(@Param("studentId") Long studentId);
+
+    @Query("""
+            select new com.ams.academicmanagementsystem.attendance.ClassDaySummary(
+            a.attendanceDate,
+            sum(case when a.present = true then 1 else 0 end),
+            sum(case when a.present = false then 1 else 0 end))
+            from Attendance a
+            where a.subject.id = :subjectId and a.student.section.id = :sectionId
+            group by a.attendanceDate
+            order by a.attendanceDate desc
+            """)
+    List<ClassDaySummary> summarizeByDay(@Param("subjectId") Long subjectId, @Param("sectionId") Long sectionId);
 }

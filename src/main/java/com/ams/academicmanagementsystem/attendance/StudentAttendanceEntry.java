@@ -1,4 +1,8 @@
 package com.ams.academicmanagementsystem.attendance;
 
-public record StudentAttendanceEntry(Long studentId, boolean present) {
+import jakarta.validation.constraints.NotNull;
+
+public record StudentAttendanceEntry(
+        @NotNull Long studentId,
+        @NotNull Boolean present) {
 }

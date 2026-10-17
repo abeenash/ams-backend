@@ -16,3 +16,9 @@ app:
   jwt:
     secret: ${JWT_SECRET:this-is-a-temporary-dev-secret-change-it-before-any-real-deployment}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}
+
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
